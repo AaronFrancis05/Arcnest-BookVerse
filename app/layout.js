@@ -5,7 +5,8 @@ import { CartProvider } from "@context/cartContext";
 import MinimalFooter from "@components/MinimalFooter";
 import PageLoader from "@/components/Loader/PageLoader";
 import { ClerkProvider } from "@clerk/nextjs";
-import { useSyncUser } from "@hooks/useSyncUser";
+// import { useSyncUser } from "@hooks/useSyncUser";
+import UserSync from "@components/UserSync";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,14 +25,22 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      appearance={{
+        variables: {
+          colorPrimary: "#4f46e5", // indigo-600
+        },
+      }}
+    >
       <html lang="en">
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
           <PageLoader />
           <CartProvider>
-            <useSyncUser />
+            {/* <useSyncUser /> */}
+            <UserSync />
+
             {children}
             <MinimalFooter />
           </CartProvider>

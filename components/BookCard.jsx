@@ -25,7 +25,7 @@ export default function BookCard({ book, onAddToCart, onBorrow }) {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             whileHover={{ y: -5 }}
-            className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-all duration-300 w-80"
+            className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-all duration-300 w-full max-w-sm mx-auto"
         >
             {/* Book cover */}
             <div className="h-48 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center relative overflow-hidden">
@@ -38,22 +38,22 @@ export default function BookCard({ book, onAddToCart, onBorrow }) {
             {/* Book info */}
             <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
-                    <div>
+                    <div className="flex-1 min-w-0 mr-3">
                         <h3 className="text-lg font-semibold text-gray-800 line-clamp-1">
                             {book.title}
                         </h3>
-                        <p className="text-gray-600 text-sm mt-1">by {book.author}</p>
+                        <p className="text-gray-600 text-sm mt-1 truncate">by {book.author}</p>
                     </div>
-                    <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                    <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full flex-shrink-0">
                         {book.category}
                     </span>
                 </div>
 
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                <p className="text-gray-600 text-sm mb-4 line-clamp-3 leading-relaxed">
                     {book.description}
                 </p>
 
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex justify-between items-center mb-6">
                     <div className="text-left">
                         <div className="text-2xl font-bold text-gray-900">
                             ${book.price}
@@ -63,7 +63,10 @@ export default function BookCard({ book, onAddToCart, onBorrow }) {
                         </div>
                     </div>
                     <div className="text-right">
-                        <div className="text-yellow-500 text-sm">⭐ {book.rating}</div>
+                        <div className="text-yellow-500 text-sm flex items-center gap-1">
+                            <span>⭐</span>
+                            <span>{book.rating}</span>
+                        </div>
                         <div className="text-gray-500 text-xs">{book.pages} pages</div>
                     </div>
                 </div>
@@ -74,7 +77,7 @@ export default function BookCard({ book, onAddToCart, onBorrow }) {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => handleAddToCart('purchase')}
-                        className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 text-sm font-medium"
+                        className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 text-sm font-medium"
                     >
                         <FiShoppingCart className="text-lg" />
                         <span>Buy</span>
@@ -84,7 +87,7 @@ export default function BookCard({ book, onAddToCart, onBorrow }) {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => handleAddToCart('borrow')}
-                        className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 text-sm font-medium"
+                        className="flex-1 bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 text-sm font-medium"
                     >
                         <FiBookOpen className="text-lg" />
                         <span>Borrow</span>
