@@ -1,17 +1,21 @@
-// import { Geist, Geist_Mono } from "next/font/google";
+// app/layout.js
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@context/cartContext";
 import MinimalFooter from "@components/MinimalFooter";
+import PageLoader from "@/components/Loader/PageLoader";
+import { ClerkProvider } from "@clerk/nextjs";
+import { useSyncUser } from "@hooks/useSyncUser";
 
-// const geistSans = Geist({
-//   variable: "--font-geist-sans",
-//   subsets: ["latin"],
-// });
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
 
-// const geistMono = Geist_Mono({
-//   variable: "--font-geist-mono",
-//   subsets: ["latin"],
-// });
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
 
 export const metadata = {
   title: "ARCNEST 3D BOOKVERSE",
@@ -20,15 +24,19 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body
-        // className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <CartProvider>
-          {children}
-          <MinimalFooter />
-        </CartProvider>
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en">
+        <body
+          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        >
+          <PageLoader />
+          <CartProvider>
+            <useSyncUser />
+            {children}
+            <MinimalFooter />
+          </CartProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

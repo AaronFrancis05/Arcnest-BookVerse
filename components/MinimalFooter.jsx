@@ -117,23 +117,59 @@ const MinimalFooter = () => {
                     <div>
                         <h4 className="text-lg font-semibold mb-4 text-gray-100">Support</h4>
                         <ul className="space-y-3 mb-6">
-                            {[
-                                'Help Center',
-                                'Contact Us',
-                                'Shipping Info',
-                                'Returns Policy',
-                                'Privacy Policy',
-                                'Terms of Service'
-                            ].map((item) => (
-                                <motion.li key={item} whileHover={{ x: 5 }}>
-                                    <Link
-                                        href="#"
-                                        className="text-gray-400 hover:text-indigo-300 transition-colors duration-200 text-sm"
-                                    >
-                                        {item}
-                                    </Link>
-                                </motion.li>
-                            ))}
+                            <motion.li whileHover={{ x: 5 }}>
+                                <Link
+                                    href="/faq"
+                                    className="text-gray-400 hover:text-indigo-300 transition-colors duration-200 text-sm"
+                                >
+                                    FAQ
+                                </Link>
+                            </motion.li>
+
+                            <motion.li whileHover={{ x: 5 }}>
+                                <Link
+                                    href="/contact"
+                                    className="text-gray-400 hover:text-indigo-300 transition-colors duration-200 text-sm"
+                                >
+                                    Contact Us
+                                </Link>
+                            </motion.li>
+
+                            <motion.li whileHover={{ x: 5 }}>
+                                <Link
+                                    href="#"
+                                    className="text-gray-400 hover:text-indigo-300 transition-colors duration-200 text-sm"
+                                >
+                                    Shipping Info
+                                </Link>
+                            </motion.li>
+
+                            <motion.li whileHover={{ x: 5 }}>
+                                <Link
+                                    href="#"
+                                    className="text-gray-400 hover:text-indigo-300 transition-colors duration-200 text-sm"
+                                >
+                                    Returns Policy
+                                </Link>
+                            </motion.li>
+
+                            <motion.li whileHover={{ x: 5 }}>
+                                <Link
+                                    href="#"
+                                    className="text-gray-400 hover:text-indigo-300 transition-colors duration-200 text-sm"
+                                >
+                                    Privacy Policy
+                                </Link>
+                            </motion.li>
+
+                            <motion.li whileHover={{ x: 5 }}>
+                                <Link
+                                    href="#"
+                                    className="text-gray-400 hover:text-indigo-300 transition-colors duration-200 text-sm"
+                                >
+                                    Terms of Service
+                                </Link>
+                            </motion.li>
                         </ul>
 
                         {/* Contact Info */}
