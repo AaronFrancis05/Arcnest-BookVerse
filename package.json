@@ -33,6 +33,7 @@
     "react-spinner": "^0.2.7",
     "react-toastify": "^11.0.5",
     "react-vertical-timeline-component": "^3.5.3",
+    "svix": "^1.77.0",
     "three": "^0.180.0"
   },
   "devDependencies": {

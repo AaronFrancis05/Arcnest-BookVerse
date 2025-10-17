@@ -53,10 +53,10 @@ export default function BookCart() {
             return;
         }
 
-        // Validate phone number format
-        const phoneRegex = /^(07[0-9]{8}|2567[0-9]{8}|\+2567[0-9]{8})$/;
-        if (!phoneRegex.test(phoneNumber.replace(/\s/g, ''))) {
-            alert('Please enter a valid Uganda phone number (07XXXXXXXX or 2567XXXXXXXX)');
+        // Validate phone number format for Uganda numbers
+        const isValidPhone = validateUgandaPhoneNumber(phoneNumber);
+        if (!isValidPhone) {
+            alert('Please enter a valid Uganda phone number\n\nAccepted formats:\n• 07XXXXXXXX (e.g., 07448388323)\n• 256XXXXXXXXX (e.g., 2567448388323)\n• +256XXXXXXXXX (e.g., +2567448388323)');
             return;
         }
 
@@ -75,7 +75,8 @@ export default function BookCart() {
                     metadata: {
                         provider: selectedPayment,
                         amount: getTotalPrice(),
-                        itemCount: cartItems.length
+                        itemCount: cartItems.length,
+                        phoneNumber: formatPhoneForAPI(phoneNumber)
                     }
                 }),
             });
@@ -94,8 +95,9 @@ export default function BookCart() {
                 totalAmount: getTotalPrice(),
                 paymentMethod: selectedPayment,
                 paymentStatus: 'pending',
+                customerPhone: formatPhoneForAPI(phoneNumber),
                 shippingAddress: {
-                    phone: phoneNumber
+                    phone: formatPhoneForAPI(phoneNumber)
                 }
             };
 
@@ -113,7 +115,7 @@ export default function BookCart() {
                 // Simulate payment processing
                 const paymentSuccess = await processMobilePayment({
                     provider: selectedPayment,
-                    phoneNumber,
+                    phoneNumber: formatPhoneForAPI(phoneNumber),
                     amount: getTotalPrice(),
                     orderId: order.orderId
                 });
@@ -144,7 +146,8 @@ export default function BookCart() {
                             metadata: {
                                 orderId: order.orderId,
                                 amount: getTotalPrice(),
-                                transactionId: 'TX' + Date.now()
+                                transactionId: 'TX' + Date.now(),
+                                phoneNumber: formatPhoneForAPI(phoneNumber)
                             }
                         }),
                     });
@@ -169,7 +172,7 @@ export default function BookCart() {
                         });
                     });
 
-                    alert(`Payment successful! 🎉\nOrder ID: ${order.orderId}\nYou will receive a ${selectedPayment === 'airtel' ? 'Airtel Money' : 'MTN Mobile Money'} prompt shortly.`);
+                    alert(`Payment successful! 🎉\nOrder ID: ${order.orderId}\nYou will receive a ${selectedPayment === 'airtel' ? 'Airtel Money' : 'MTN Mobile Money'} prompt on ${formatPhoneForDisplay(phoneNumber)} shortly.`);
                     clearCart();
                 } else {
                     throw new Error('Payment processing failed');
@@ -187,7 +190,10 @@ export default function BookCart() {
                 body: JSON.stringify({
                     type: 'payment_failed',
                     userId: user?.id,
-                    metadata: { error: error.message }
+                    metadata: {
+                        error: error.message,
+                        phoneNumber: formatPhoneForAPI(phoneNumber)
+                    }
                 }),
             });
 
@@ -195,6 +201,70 @@ export default function BookCart() {
         } finally {
             setIsProcessing(false);
         }
+    };
+
+    // Validate Uganda phone numbers (MTN and Airtel)
+    const validateUgandaPhoneNumber = (phone) => {
+        const cleanPhone = phone.replace(/\s/g, '');
+
+        // MTN and Airtel Uganda number patterns
+        const phonePatterns = [
+            /^(07[0-9]{8})$/,           // 0701234567, 0751234567, 0771234567, 0781234567
+            /^(2567[0-9]{8})$/,         // 256701234567, 256751234567, etc.
+            /^(\+2567[0-9]{8})$/,       // +256701234567, +256751234567, etc.
+        ];
+
+        return phonePatterns.some(pattern => pattern.test(cleanPhone));
+    };
+
+    // Format phone number for API (standardize to 256 format)
+    const formatPhoneForAPI = (phone) => {
+        const cleanPhone = phone.replace(/\s/g, '');
+
+        if (cleanPhone.startsWith('07')) {
+            return '256' + cleanPhone.substring(1); // 07448388323 -> 2567448388323
+        } else if (cleanPhone.startsWith('+256')) {
+            return cleanPhone.substring(1); // +2567448388323 -> 2567448388323
+        }
+
+        return cleanPhone; // Already in 256 format
+    };
+
+    // Format phone number for display
+    const formatPhoneForDisplay = (phone) => {
+        const cleanPhone = phone.replace(/\s/g, '');
+
+        if (cleanPhone.startsWith('07') && cleanPhone.length === 10) {
+            return cleanPhone.replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2 $3'); // 0744838832 -> 074 483 8832
+        } else if ((cleanPhone.startsWith('256') || cleanPhone.startsWith('+256')) && cleanPhone.length >= 12) {
+            const digits = cleanPhone.replace('+', '');
+            return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{3})/, '$1 $2 $3 $4'); // 256744838832 -> 256 744 838 832
+        }
+
+        return phone;
+    };
+
+    const formatPhoneInput = (value) => {
+        // Remove all non-digit characters except +
+        const cleanValue = value.replace(/[^\d+]/g, '');
+
+        // Limit length based on format
+        if (cleanValue.startsWith('+256') && cleanValue.length > 13) {
+            return cleanValue.substring(0, 13);
+        } else if (cleanValue.startsWith('256') && cleanValue.length > 12) {
+            return cleanValue.substring(0, 12);
+        } else if (cleanValue.startsWith('07') && cleanValue.length > 10) {
+            return cleanValue.substring(0, 10);
+        } else if (!cleanValue.startsWith('07') && !cleanValue.startsWith('256') && !cleanValue.startsWith('+256') && cleanValue.length > 10) {
+            return cleanValue.substring(0, 10);
+        }
+
+        return cleanValue;
+    };
+
+    const handlePhoneChange = (e) => {
+        const formatted = formatPhoneInput(e.target.value);
+        setPhoneNumber(formatted);
     };
 
     const processMobilePayment = async (paymentData) => {
@@ -297,26 +367,6 @@ export default function BookCart() {
 
     const getItemPrice = (item) => {
         return item.type === 'borrow' ? item.borrowPrice || 5 : item.price;
-    };
-
-    const formatPhoneNumber = (value) => {
-        // Remove all non-digit characters
-        const phone = value.replace(/\D/g, '');
-
-        // Format based on length
-        if (phone.startsWith('256') && phone.length === 12) {
-            return phone.replace(/(\d{3})(\d{3})(\d{3})(\d{3})/, '$1 $2 $3 $4');
-        } else if (phone.startsWith('7') && phone.length === 9) {
-            return phone.replace(/(\d{3})(\d{3})(\d{3})/, '07$1 $2 $3');
-        } else if (phone.length <= 9) {
-            return phone.replace(/(\d{3})(\d{3})(\d{0,3})/, '07$1 $2 $3').trim();
-        }
-        return value;
-    };
-
-    const handlePhoneChange = (e) => {
-        const formatted = formatPhoneNumber(e.target.value);
-        setPhoneNumber(formatted);
     };
 
     if (cartItems.length === 0) {
@@ -624,12 +674,14 @@ export default function BookCart() {
                                     type="tel"
                                     value={phoneNumber}
                                     onChange={handlePhoneChange}
-                                    placeholder="07X XXX XXX or 256 XXX XXX"
+                                    placeholder="07448388323 or 2567448388323 or +2567448388323"
                                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Enter your Uganda mobile number
-                                </p>
+                                <div className="text-xs text-gray-500 mt-1 space-y-1">
+                                    <p>✓ Accepts Uganda numbers only</p>
+                                    <p>✓ Formats: 07XXXXXXXX, 256XXXXXXXXX, +256XXXXXXXXX</p>
+                                    <p>✓ Works with both MTN and Airtel</p>
+                                </div>
                             </motion.div>
                         )}
 
@@ -665,8 +717,8 @@ export default function BookCart() {
                                 <p className="font-medium mb-1">Payment Instructions:</p>
                                 <p>
                                     {selectedPayment === 'airtel'
-                                        ? 'You will receive an Airtel Money prompt. Enter your PIN to complete payment.'
-                                        : 'You will receive an MTN Mobile Money prompt. Enter your PIN to complete payment.'
+                                        ? `You will receive an Airtel Money prompt on ${formatPhoneForDisplay(phoneNumber)}. Enter your PIN to complete payment.`
+                                        : `You will receive an MTN Mobile Money prompt on ${formatPhoneForDisplay(phoneNumber)}. Enter your PIN to complete payment.`
                                     }
                                 </p>
                             </motion.div>

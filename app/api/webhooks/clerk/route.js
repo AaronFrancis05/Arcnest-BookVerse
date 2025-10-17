@@ -1,7 +1,7 @@
 // app/api/webhooks/clerk/route.js
 import { Webhook } from "svix";
 import { headers } from "next/headers";
-import { WebhookEvent } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 import connectDB from "@lib/mongodb";
 import User from "@models/User";
 
@@ -9,8 +9,12 @@ export async function POST(req) {
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 
   if (!WEBHOOK_SECRET) {
-    throw new Error(
-      "Please add CLERK_WEBHOOK_SECRET from Clerk Dashboard to .env"
+    console.error(
+      "Please add CLERK_WEBHOOK_SECRET to your environment variables"
+    );
+    return NextResponse.json(
+      { error: "Webhook secret not configured" },
+      { status: 500 }
     );
   }
 
@@ -22,16 +26,17 @@ export async function POST(req) {
 
   // If there are no headers, error out
   if (!svix_id || !svix_timestamp || !svix_signature) {
-    return new Response("Error occurred -- no svix headers", {
-      status: 400,
-    });
+    return NextResponse.json(
+      { error: "Error occurred -- no svix headers" },
+      { status: 400 }
+    );
   }
 
   // Get the body
   const payload = await req.json();
   const body = JSON.stringify(payload);
 
-  // Create a new Svix instance with your secret.
+  // Create a new Svix instance with your secret
   const wh = new Webhook(WEBHOOK_SECRET);
 
   let evt;
@@ -45,20 +50,14 @@ export async function POST(req) {
     });
   } catch (err) {
     console.error("Error verifying webhook:", err);
-    return new Response("Error occurred", {
-      status: 400,
-    });
+    return NextResponse.json({ error: "Error occurred" }, { status: 400 });
   }
-
-  // Get the ID and type
-  const eventType = evt.type;
-
-  console.log(`Webhook with type ${eventType}`);
-  console.log("Webhook body:", body);
 
   // Handle the webhook
   try {
     await connectDB();
+
+    const eventType = evt.type;
 
     if (eventType === "user.created" || eventType === "user.updated") {
       const { id, email_addresses, first_name, last_name, image_url } =
@@ -72,7 +71,6 @@ export async function POST(req) {
         profileImage: image_url,
       };
 
-      // Create or update user in database
       const dbUser = await User.findOneAndUpdate({ clerkId: id }, userData, {
         upsert: true,
         new: true,
@@ -82,9 +80,12 @@ export async function POST(req) {
       console.log("User saved to database:", dbUser._id);
     }
 
-    return new Response("Webhook processed successfully", { status: 200 });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error processing webhook:", error);
-    return new Response("Error processing webhook", { status: 500 });
+    return NextResponse.json(
+      { error: "Error processing webhook" },
+      { status: 500 }
+    );
   }
 }
