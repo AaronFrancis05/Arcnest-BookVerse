@@ -173,7 +173,7 @@ export default function Header() {
                                     <span>Contact</span>
                                 </Link>
 
-                                <SignedIn>
+                                {/* <SignedIn>
                                     <Link
                                         href="/dashboard"
                                         className="flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors text-lg font-medium"
@@ -182,7 +182,7 @@ export default function Header() {
                                         <FiUser className="text-xl" />
                                         <span>Dashboard</span>
                                     </Link>
-                                </SignedIn>
+                                </SignedIn> */}
 
                                 <SignedOut>
                                     <Link
