@@ -49,9 +49,9 @@ export default function BookCard({ book, onAddToCart, onBorrow }) {
                     </span>
                 </div>
 
-                <p className="text-gray-600 text-sm mb-4 line-clamp-3 leading-relaxed">
+                {/* <p className="text-gray-600 text-sm mb-4 line-clamp-3 leading-relaxed">
                     {book.description}
-                </p>
+                </p> */}
 
                 <div className="flex justify-between items-center mb-6">
                     <div className="text-left">

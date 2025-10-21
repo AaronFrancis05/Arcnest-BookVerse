@@ -1,171 +1,164 @@
-'use client'
-// context/CartContext.js
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+// context/cartContext.js
+'use client';
+import { createContext, useContext, useReducer, useEffect } from 'react';
 
 const CartContext = createContext();
 
-// Load cart from localStorage
-const loadCartFromStorage = () => {
-    if (typeof window !== 'undefined') {
-        try {
-            const savedCart = localStorage.getItem('bookverse-cart');
-            return savedCart ? JSON.parse(savedCart) : { cartItems: [] };
-        } catch (error) {
-            console.error('Error loading cart from localStorage:', error);
-            return { cartItems: [] };
-        }
-    }
-    return { cartItems: [] };
-};
-
-// Save cart to localStorage
-const saveCartToStorage = (state) => {
-    if (typeof window !== 'undefined') {
-        try {
-            localStorage.setItem('bookverse-cart', JSON.stringify(state));
-        } catch (error) {
-            console.error('Error saving cart to localStorage:', error);
-        }
-    }
-};
-
 const cartReducer = (state, action) => {
-    let newState;
-
     switch (action.type) {
         case 'ADD_TO_CART':
-            // Check if item already exists in cart
-            const existingItemIndex = state.cartItems.findIndex(
-                item => item.id === action.payload.id && item.type === action.payload.type
+            const existingItem = state.items.find(item =>
+                item.id === action.payload.id && item.type === action.payload.type
             );
-
-            if (existingItemIndex >= 0) {
-                // Update quantity if item exists
-                newState = {
+            if (existingItem) {
+                return {
                     ...state,
-                    cartItems: state.cartItems.map((item, index) =>
-                        index === existingItemIndex
-                            ? { ...item, quantity: item.quantity + action.payload.quantity }
+                    items: state.items.map(item =>
+                        item.id === action.payload.id && item.type === action.payload.type
+                            ? { ...item, quantity: (item.quantity || 1) + 1 }
                             : item
                     )
                 };
-            } else {
-                // Add new item
-                newState = {
-                    ...state,
-                    cartItems: [...state.cartItems, { ...action.payload }]
-                };
             }
-            break;
+            return {
+                ...state,
+                items: [...state.items, { ...action.payload, quantity: 1 }]
+            };
 
         case 'REMOVE_FROM_CART':
-            newState = {
+            return {
                 ...state,
-                cartItems: state.cartItems.filter(item => item.id !== action.payload)
+                items: state.items.filter(item =>
+                    !(item.id === action.payload.id && item.type === action.payload.type)
+                )
             };
-            break;
-
-        case 'CLEAR_CART':
-            newState = {
-                ...state,
-                cartItems: []
-            };
-            break;
 
         case 'UPDATE_QUANTITY':
-            newState = {
+            if (action.payload.quantity < 1) {
+                return {
+                    ...state,
+                    items: state.items.filter(item =>
+                        !(item.id === action.payload.id && item.type === action.payload.type)
+                    )
+                };
+            }
+            return {
                 ...state,
-                cartItems: state.cartItems.map(item =>
-                    item.id === action.payload.id
+                items: state.items.map(item =>
+                    item.id === action.payload.id && item.type === action.payload.type
                         ? { ...item, quantity: action.payload.quantity }
                         : item
                 )
             };
-            break;
+
+        case 'CLEAR_CART':
+            return {
+                ...state,
+                items: []
+            };
 
         case 'LOAD_CART':
-            return action.payload;
+            return {
+                ...state,
+                items: Array.isArray(action.payload) ? action.payload : []
+            };
 
         default:
             return state;
     }
-
-    // Save to localStorage after each action
-    saveCartToStorage(newState);
-    return newState;
 };
 
 const initialState = {
-    cartItems: []
+    items: []
 };
 
-export const CartProvider = ({ children }) => {
+export function CartProvider({ children }) {
     const [state, dispatch] = useReducer(cartReducer, initialState);
 
-    // Load cart from localStorage on component mount
+    // Load cart from localStorage on mount
     useEffect(() => {
-        const savedCart = loadCartFromStorage();
-        dispatch({ type: 'LOAD_CART', payload: savedCart });
+        try {
+            const savedCart = localStorage.getItem('bookverse-cart');
+            if (savedCart) {
+                const parsedCart = JSON.parse(savedCart);
+                dispatch({
+                    type: 'LOAD_CART',
+                    payload: Array.isArray(parsedCart) ? parsedCart : []
+                });
+            }
+        } catch (error) {
+            console.error('Error loading cart from localStorage:', error);
+            dispatch({ type: 'LOAD_CART', payload: [] });
+        }
     }, []);
 
-    const addToCart = (book, type) => {
-        dispatch({
-            type: 'ADD_TO_CART',
-            payload: {
-                ...book,
-                type,
-                quantity: 1,
-                id: `${book.id}-${type}` // Unique ID combining book ID and type
-            }
-        });
+    // Save cart to localStorage whenever it changes
+    useEffect(() => {
+        try {
+            localStorage.setItem('bookverse-cart', JSON.stringify(state.items));
+        } catch (error) {
+            console.error('Error saving cart to localStorage:', error);
+        }
+    }, [state.items]);
+
+    const addToCart = (item) => {
+        dispatch({ type: 'ADD_TO_CART', payload: item });
     };
 
-    const removeFromCart = (id) => {
-        dispatch({ type: 'REMOVE_FROM_CART', payload: id });
+    const removeFromCart = (item) => {
+        dispatch({ type: 'REMOVE_FROM_CART', payload: item });
+    };
+
+    const updateQuantity = (item, quantity) => {
+        dispatch({ type: 'UPDATE_QUANTITY', payload: { ...item, quantity } });
     };
 
     const clearCart = () => {
         dispatch({ type: 'CLEAR_CART' });
     };
 
-    const updateQuantity = (id, quantity) => {
-        if (quantity <= 0) {
-            removeFromCart(id);
-        } else {
-            dispatch({ type: 'UPDATE_QUANTITY', payload: { id, quantity } });
-        }
+    const getCartTotal = () => {
+        return Array.isArray(state.items)
+            ? state.items.reduce((total, item) => total + (item.price * (item.quantity || 1)), 0)
+            : 0;
     };
 
-    const getTotalPrice = () => {
-        return state.cartItems.reduce((total, item) => {
-            const price = item.type === 'borrow' ? item.borrowPrice || 5 : item.price;
-            return total + (price * item.quantity);
-        }, 0);
+    const getCartItemsCount = () => {
+        return Array.isArray(state.items)
+            ? state.items.reduce((total, item) => total + (item.quantity || 1), 0)
+            : 0;
     };
 
-    const getTotalItems = () => {
-        return state.cartItems.reduce((total, item) => total + item.quantity, 0);
+    const value = {
+        cartItems: Array.isArray(state.items) ? state.items : [],
+        addToCart,
+        removeFromCart,
+        updateQuantity,
+        clearCart,
+        getCartTotal,
+        getCartItemsCount
     };
 
     return (
-        <CartContext.Provider value={{
-            cartItems: state.cartItems,
-            addToCart,
-            removeFromCart,
-            clearCart,
-            updateQuantity,
-            getTotalPrice,
-            getTotalItems
-        }}>
+        <CartContext.Provider value={value}>
             {children}
         </CartContext.Provider>
     );
-};
+}
 
-export const useCart = () => {
+export function useCart() {
     const context = useContext(CartContext);
     if (!context) {
-        throw new Error('useCart must be used within a CartProvider');
+        // Return a safe fallback if context is not available
+        return {
+            cartItems: [],
+            addToCart: () => console.warn('Cart context not available'),
+            removeFromCart: () => console.warn('Cart context not available'),
+            updateQuantity: () => console.warn('Cart context not available'),
+            clearCart: () => console.warn('Cart context not available'),
+            getCartTotal: () => 0,
+            getCartItemsCount: () => 0
+        };
     }
     return context;
-};
+}
