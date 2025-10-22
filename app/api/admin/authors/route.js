@@ -1,6 +1,8 @@
 // app/api/admin/authors/route.js
 import { NextResponse } from "next/server";
-import { auth, clerkClient } from "@clerk/nextjs";
+
+import { clerkClient } from "@clerk/nextjs";
+import { currentUser } from "@clerk/nextjs/server";
 import connectDB from "@lib/mongodb";
 import Author from "@models/Author";
 
@@ -9,9 +11,9 @@ export async function POST(request) {
     await connectDB();
 
     // Instead of currentUser, use:
-    const { userId } = auth();
+    const user = await currentUser();
 
-    if (!userId) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

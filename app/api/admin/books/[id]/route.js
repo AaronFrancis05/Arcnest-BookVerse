@@ -1,6 +1,6 @@
 // app/api/admin/books/[id]/route.js
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs";
+import { currentUser } from "@clerk/nextjs/server";
 import connectDB from "@lib/mongodb";
 import Book from "@models/Book";
 
@@ -8,9 +8,9 @@ export async function DELETE(request, { params }) {
   try {
     await connectDB();
 
-const { userId } = auth();
+    const user = await currentUser();
 
-    if (!userId) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
