@@ -80,7 +80,7 @@ export default function AdminDashboard() {
                             Admin Dashboard
                         </motion.h1>
                         <p className="text-lg text-gray-600">
-                            Manage books and authors in your BookVerse collection
+                            Manage books, authors, and transactions in your BookVerse collection
                         </p>
                     </div>
 
@@ -91,14 +91,15 @@ export default function AdminDashboard() {
                                 {[
                                     { id: 'add-book', name: 'Add New Book' },
                                     { id: 'add-author', name: 'Add New Author' },
-                                    { id: 'manage-books', name: 'Manage Books' }
+                                    { id: 'manage-books', name: 'Manage Books' },
+                                    { id: 'transactions', name: 'Transactions' }
                                 ].map(tab => (
                                     <button
                                         key={tab.id}
                                         onClick={() => setActiveTab(tab.id)}
                                         className={`py-4 px-1 border-b-2 font-medium text-sm capitalize whitespace-nowrap ${activeTab === tab.id
-                                                ? 'border-blue-500 text-blue-600'
-                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                            ? 'border-blue-500 text-blue-600'
+                                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                             }`}
                                     >
                                         {tab.name}
@@ -112,6 +113,7 @@ export default function AdminDashboard() {
                             {activeTab === 'add-book' && <AddBookForm />}
                             {activeTab === 'add-author' && <AddAuthorForm />}
                             {activeTab === 'manage-books' && <ManageBooks />}
+                            {activeTab === 'transactions' && <Transactions />}
                         </div>
                     </div>
                 </div>
@@ -120,9 +122,8 @@ export default function AdminDashboard() {
     );
 }
 
-// Add Book Form Component (Keep your existing implementation)
+// Add Book Form Component with Cloudinary upload and author selection
 function AddBookForm() {
-    // ... your existing AddBookForm code remains exactly the same
     const [formData, setFormData] = useState({
         title: '',
         author: '',
@@ -132,27 +133,154 @@ function AddBookForm() {
         pages: '',
         isbn: '',
         publishedDate: '',
-        coverImage: ''
+        coverImage: '',
+        backCoverImage: '',
+        publisher: '',
+        language: 'English',
+        format: 'Paperback'
     });
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
+    const [authors, setAuthors] = useState([]);
+    const [uploading, setUploading] = useState('');
 
     const categories = [
-        'fiction', 'non-fiction', 'science', 'technology',
-        'biography', 'history', 'fantasy', 'mystery'
+        { id: "fiction", name: "Fiction" },
+        { id: "non-fiction", name: "Non-Fiction" },
+        { id: "science", name: "Science" },
+        { id: "technology", name: "Technology" },
+        { id: "biography", name: "Biography" },
+        { id: "history", name: "History" },
+        { id: "fantasy", name: "Fantasy" },
+        { id: "mystery", name: "Mystery" },
     ];
 
-    const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
+    // Fetch authors from database
+    useEffect(() => {
+        fetchAuthors();
+    }, []);
+
+    const fetchAuthors = async () => {
+        try {
+            const response = await fetch('/api/admin/authors');
+            const data = await response.json();
+            if (response.ok) {
+                setAuthors(data.authors || []);
+            }
+        } catch (error) {
+            console.error('Error fetching authors:', error);
+        }
+    };
+
+    // Generate ISBN
+    const generateISBN = () => {
+        const prefix = '978';
+        const group = Math.floor(Math.random() * 5) + 1;
+        const publisher = Math.floor(Math.random() * 99999).toString().padStart(5, '0');
+        const book = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
+        const isbn = `${prefix}-${group}-${publisher}-${book}`;
+        setFormData(prev => ({ ...prev, isbn }));
+    };
+
+    // Server-side image upload
+    const uploadImage = async (file, imageType) => {
+        const reader = new FileReader();
+
+        return new Promise((resolve, reject) => {
+            reader.onloadend = async () => {
+                try {
+                    const base64Image = reader.result;
+
+                    const response = await fetch('/api/upload', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            image: base64Image,
+                            folder: `bookverse/${imageType === 'coverImage' ? 'books' : 'authors'}`
+                        }),
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        resolve(data.url);
+                    } else {
+                        reject(new Error(data.error || 'Upload failed'));
+                    }
+                } catch (error) {
+                    reject(error);
+                }
+            };
+
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsDataURL(file);
         });
+    };
+
+    const handleImageUpload = async (e, imageType) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            setMessage({ type: 'error', text: 'Please select an image file' });
+            return;
+        }
+
+        // Validate file size (5MB max)
+        if (file.size > 5 * 1024 * 1024) {
+            setMessage({ type: 'error', text: 'Image size should be less than 5MB' });
+            return;
+        }
+
+        setUploading(imageType);
+        try {
+            const imageUrl = await uploadImage(file, imageType);
+            setFormData(prev => ({
+                ...prev,
+                [imageType]: imageUrl
+            }));
+            setMessage({ type: 'success', text: `${imageType === 'coverImage' ? 'Front cover' : 'Back cover'} uploaded successfully!` });
+        } catch (error) {
+            console.error('Upload error:', error);
+            setMessage({ type: 'error', text: 'Failed to upload image. Please try again.' });
+        } finally {
+            setUploading('');
+        }
+    };
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Validate required fields
+        if (!formData.coverImage) {
+            setMessage({ type: 'error', text: 'Please upload a front cover image' });
+            return;
+        }
+
         setLoading(true);
         setMessage({ type: '', text: '' });
+
+        // Force format to be valid - convert "E-book" to "eBook" if needed
+        const submitData = {
+            ...formData,
+            format: formData.format === 'E-book' ? 'eBook' : formData.format,
+            price: parseFloat(formData.price),
+            pages: formData.pages ? parseInt(formData.pages) : undefined,
+            rating: 4.5
+        };
+
+        console.log('🔍 DEBUG - Submitting book data:', submitData);
 
         try {
             const response = await fetch('/api/admin/books', {
@@ -160,18 +288,14 @@ function AddBookForm() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    ...formData,
-                    price: parseFloat(formData.price),
-                    pages: parseInt(formData.pages),
-                    rating: 4.5 // Default rating for new books
-                }),
+                body: JSON.stringify(submitData),
             });
 
             const data = await response.json();
 
             if (response.ok) {
                 setMessage({ type: 'success', text: 'Book added successfully!' });
+                // Reset form
                 setFormData({
                     title: '',
                     author: '',
@@ -181,13 +305,18 @@ function AddBookForm() {
                     pages: '',
                     isbn: '',
                     publishedDate: '',
-                    coverImage: ''
+                    coverImage: '',
+                    backCoverImage: '',
+                    publisher: '',
+                    language: 'English',
+                    format: 'Paperback'
                 });
             } else {
                 setMessage({ type: 'error', text: data.error || 'Failed to add book' });
             }
         } catch (error) {
-            setMessage({ type: 'error', text: 'Error adding book' });
+            console.error('Error adding book:', error);
+            setMessage({ type: 'error', text: 'Error adding book: ' + error.message });
         } finally {
             setLoading(false);
         }
@@ -197,9 +326,16 @@ function AddBookForm() {
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="max-w-2xl mx-auto"
+            className="max-w-4xl mx-auto"
         >
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Add New Book</h2>
+
+            {/* Debug Info */}
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                    <strong>Current Format:</strong> <code>"{formData.format}"</code>
+                </p>
+            </div>
 
             {message.text && (
                 <div className={`p-4 rounded-lg mb-6 ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
@@ -210,7 +346,7 @@ function AddBookForm() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
+                    <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             Book Title *
                         </label>
@@ -225,19 +361,27 @@ function AddBookForm() {
                         />
                     </div>
 
-                    <div>
+                    <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             Author *
                         </label>
-                        <input
-                            type="text"
+                        <select
                             name="author"
                             value={formData.author}
                             onChange={handleChange}
                             required
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="Enter author name"
-                        />
+                        >
+                            <option value="">Select an author</option>
+                            {authors.map(author => (
+                                <option key={author._id} value={author.name}>
+                                    {author.name}
+                                </option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-gray-500 mt-1">
+                            Can't find the author? Add them in the "Add New Author" tab first.
+                        </p>
                     </div>
 
                     <div className="md:col-span-2">
@@ -268,8 +412,8 @@ function AddBookForm() {
                         >
                             <option value="">Select a category</option>
                             {categories.map(category => (
-                                <option key={category} value={category}>
-                                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                                <option key={category.id} value={category.id}>
+                                    {category.name}
                                 </option>
                             ))}
                         </select>
@@ -310,14 +454,23 @@ function AddBookForm() {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             ISBN
                         </label>
-                        <input
-                            type="text"
-                            name="isbn"
-                            value={formData.isbn}
-                            onChange={handleChange}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="978-3-16-148410-0"
-                        />
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                name="isbn"
+                                value={formData.isbn}
+                                onChange={handleChange}
+                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="978-3-16-148410-0"
+                            />
+                            <button
+                                type="button"
+                                onClick={generateISBN}
+                                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                            >
+                                Generate
+                            </button>
+                        </div>
                     </div>
 
                     <div>
@@ -333,25 +486,101 @@ function AddBookForm() {
                         />
                     </div>
 
-                    <div className="md:col-span-2">
+                    <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Cover Image URL
+                            Publisher
                         </label>
                         <input
-                            type="url"
-                            name="coverImage"
-                            value={formData.coverImage}
+                            type="text"
+                            name="publisher"
+                            value={formData.publisher}
                             onChange={handleChange}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="https://example.com/cover.jpg"
+                            placeholder="Publisher name"
                         />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Language
+                        </label>
+                        <input
+                            type="text"
+                            name="language"
+                            value={formData.language}
+                            onChange={handleChange}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="English"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Format
+                        </label>
+                        <select
+                            name="format"
+                            value={formData.format}
+                            onChange={handleChange}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                            <option value="Paperback">Paperback</option>
+                            <option value="Hardcover">Hardcover</option>
+                            <option value="eBook">E-book</option>
+                            <option value="Audiobook">Audiobook</option>
+                        </select>
+                    </div>
+
+                    {/* Image Uploads */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Front Cover Image *
+                        </label>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleImageUpload(e, 'coverImage')}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            disabled={uploading === 'coverImage'}
+                        />
+                        {uploading === 'coverImage' && (
+                            <p className="text-sm text-blue-600 mt-1">Uploading front cover...</p>
+                        )}
+                        {formData.coverImage && (
+                            <div className="mt-2">
+                                <img src={formData.coverImage} alt="Front cover" className="w-32 h-40 object-cover rounded shadow-md" />
+                                <p className="text-xs text-green-600 mt-1">✓ Front cover uploaded</p>
+                            </div>
+                        )}
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Back Cover Image
+                        </label>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleImageUpload(e, 'backCoverImage')}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            disabled={uploading === 'backCoverImage'}
+                        />
+                        {uploading === 'backCoverImage' && (
+                            <p className="text-sm text-blue-600 mt-1">Uploading back cover...</p>
+                        )}
+                        {formData.backCoverImage && (
+                            <div className="mt-2">
+                                <img src={formData.backCoverImage} alt="Back cover" className="w-32 h-40 object-cover rounded shadow-md" />
+                                <p className="text-xs text-green-600 mt-1">✓ Back cover uploaded</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
                 <div className="flex justify-end">
                     <button
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || uploading}
                         className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {loading ? 'Adding Book...' : 'Add Book'}
@@ -362,24 +591,97 @@ function AddBookForm() {
     );
 }
 
-// Add Author Form Component (Keep your existing implementation)
+// Add Author Form Component with Cloudinary upload
 function AddAuthorForm() {
-    // ... your existing AddAuthorForm code remains exactly the same
     const [formData, setFormData] = useState({
         name: '',
         bio: '',
         website: '',
         email: '',
-        photo: ''
+        photo: '',
+        nationality: '',
+        birthDate: '',
+        awards: '',
+        genres: ''
     });
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
+    const [uploading, setUploading] = useState(false);
 
     const handleChange = (e) => {
         setFormData({
             ...formData,
             [e.target.name]: e.target.value
         });
+    };
+
+    // Server-side image upload for author photo
+    const uploadImage = async (file) => {
+        const reader = new FileReader();
+
+        return new Promise((resolve, reject) => {
+            reader.onloadend = async () => {
+                try {
+                    const base64Image = reader.result;
+
+                    const response = await fetch('/api/upload', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            image: base64Image,
+                            folder: 'bookverse/authors'
+                        }),
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        resolve(data.url);
+                    } else {
+                        reject(new Error(data.error || 'Upload failed'));
+                    }
+                } catch (error) {
+                    reject(error);
+                }
+            };
+
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsDataURL(file);
+        });
+    };
+
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            setMessage({ type: 'error', text: 'Please select an image file' });
+            return;
+        }
+
+        // Validate file size (5MB max)
+        if (file.size > 5 * 1024 * 1024) {
+            setMessage({ type: 'error', text: 'Image size should be less than 5MB' });
+            return;
+        }
+
+        setUploading(true);
+        try {
+            const imageUrl = await uploadImage(file);
+            setFormData(prev => ({
+                ...prev,
+                photo: imageUrl
+            }));
+            setMessage({ type: 'success', text: 'Author photo uploaded successfully!' });
+        } catch (error) {
+            console.error('Upload error:', error);
+            setMessage({ type: 'error', text: 'Failed to upload image. Please try again.' });
+        } finally {
+            setUploading(false);
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -393,7 +695,11 @@ function AddAuthorForm() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(formData),
+                body: JSON.stringify({
+                    ...formData,
+                    awards: formData.awards ? formData.awards.split(',').map(award => award.trim()) : [],
+                    genres: formData.genres ? formData.genres.split(',').map(genre => genre.trim()) : []
+                }),
             });
 
             const data = await response.json();
@@ -405,7 +711,11 @@ function AddAuthorForm() {
                     bio: '',
                     website: '',
                     email: '',
-                    photo: ''
+                    photo: '',
+                    nationality: '',
+                    birthDate: '',
+                    awards: '',
+                    genres: ''
                 });
             } else {
                 setMessage({ type: 'error', text: data.error || 'Failed to add author' });
@@ -450,12 +760,13 @@ function AddAuthorForm() {
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Biography
+                        Biography *
                     </label>
                     <textarea
                         name="bio"
                         value={formData.bio}
                         onChange={handleChange}
+                        required
                         rows={6}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Enter author biography"
@@ -491,25 +802,86 @@ function AddAuthorForm() {
                         />
                     </div>
 
-                    <div className="md:col-span-2">
+                    <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Photo URL
+                            Nationality
                         </label>
                         <input
-                            type="url"
-                            name="photo"
-                            value={formData.photo}
+                            type="text"
+                            name="nationality"
+                            value={formData.nationality}
                             onChange={handleChange}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="https://example.com/author-photo.jpg"
+                            placeholder="American, British, etc."
                         />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Birth Date
+                        </label>
+                        <input
+                            type="date"
+                            name="birthDate"
+                            value={formData.birthDate}
+                            onChange={handleChange}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Awards (comma separated)
+                        </label>
+                        <input
+                            type="text"
+                            name="awards"
+                            value={formData.awards}
+                            onChange={handleChange}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Pulitzer Prize, Nobel Prize, etc."
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Genres (comma separated)
+                        </label>
+                        <input
+                            type="text"
+                            name="genres"
+                            value={formData.genres}
+                            onChange={handleChange}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Fiction, Mystery, Science Fiction"
+                        />
+                    </div>
+
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Author Photo
+                        </label>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            disabled={uploading}
+                        />
+                        {uploading && <p className="text-sm text-blue-600 mt-1">Uploading photo...</p>}
+                        {formData.photo && (
+                            <div className="mt-2">
+                                <img src={formData.photo} alt="Author" className="w-32 h-32 object-cover rounded-full shadow-md" />
+                                <p className="text-xs text-green-600 mt-1">✓ Photo uploaded</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
                 <div className="flex justify-end">
                     <button
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || uploading}
                         className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {loading ? 'Adding Author...' : 'Add Author'}
@@ -520,11 +892,25 @@ function AddAuthorForm() {
     );
 }
 
-// Manage Books Component (Keep your existing implementation)
+// Manage Books Component with Edit/Update functionality
 function ManageBooks() {
-    // ... your existing ManageBooks code remains exactly the same
     const [books, setBooks] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [editingBook, setEditingBook] = useState(null);
+    const [editFormData, setEditFormData] = useState({});
+    const [editLoading, setEditLoading] = useState(false);
+    const [message, setMessage] = useState({ type: '', text: '' });
+
+    const categories = [
+        { id: "fiction", name: "Fiction" },
+        { id: "non-fiction", name: "Non-Fiction" },
+        { id: "science", name: "Science" },
+        { id: "technology", name: "Technology" },
+        { id: "biography", name: "Biography" },
+        { id: "history", name: "History" },
+        { id: "fantasy", name: "Fantasy" },
+        { id: "mystery", name: "Mystery" },
+    ];
 
     useEffect(() => {
         fetchBooks();
@@ -553,18 +939,100 @@ function ManageBooks() {
             });
 
             if (response.ok) {
-                setBooks(books.filter(book => book.id !== bookId));
-                alert('Book deleted successfully!');
+                setBooks(books.filter(book => book._id !== bookId));
+                setMessage({ type: 'success', text: 'Book deleted successfully!' });
+
+                // Clear message after 3 seconds
+                setTimeout(() => setMessage({ type: '', text: '' }), 3000);
             } else {
-                alert('Failed to delete book');
+                const data = await response.json();
+                setMessage({ type: 'error', text: data.error || 'Failed to delete book' });
             }
         } catch (error) {
-            alert('Error deleting book');
+            setMessage({ type: 'error', text: 'Error deleting book' });
+        }
+    };
+
+    const startEditing = (book) => {
+        setEditingBook(book._id);
+        setEditFormData({
+            title: book.title,
+            author: book.author,
+            description: book.description,
+            category: book.category,
+            price: book.price.toString(),
+            pages: book.pages?.toString() || '',
+            isbn: book.isbn || '',
+            publishedDate: book.publishedDate ? new Date(book.publishedDate).toISOString().split('T')[0] : '',
+            publisher: book.publisher || '',
+            language: book.language || 'English',
+            format: book.format || 'Paperback',
+            stock: book.stock?.toString() || '1',
+            featured: book.featured || false
+        });
+    };
+
+    const cancelEditing = () => {
+        setEditingBook(null);
+        setEditFormData({});
+        setMessage({ type: '', text: '' });
+    };
+
+    const handleEditChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setEditFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
+    };
+
+    const updateBook = async (bookId) => {
+        setEditLoading(true);
+        setMessage({ type: '', text: '' });
+
+        try {
+            const response = await fetch(`/api/admin/books/${bookId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ...editFormData,
+                    price: parseFloat(editFormData.price),
+                    pages: editFormData.pages ? parseInt(editFormData.pages) : undefined,
+                    stock: parseInt(editFormData.stock) || 1
+                }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setBooks(books.map(book =>
+                    book._id === bookId ? { ...book, ...data.book } : book
+                ));
+                setMessage({ type: 'success', text: 'Book updated successfully!' });
+                setEditingBook(null);
+                setEditFormData({});
+
+                // Clear message after 3 seconds
+                setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+            } else {
+                setMessage({ type: 'error', text: data.error || 'Failed to update book' });
+            }
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Error updating book: ' + error.message });
+        } finally {
+            setEditLoading(false);
         }
     };
 
     if (loading) {
-        return <div className="text-center py-8">Loading books...</div>;
+        return (
+            <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                <p className="mt-2 text-gray-600">Loading books...</p>
+            </div>
+        );
     }
 
     return (
@@ -574,6 +1042,13 @@ function ManageBooks() {
         >
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Manage Books</h2>
 
+            {message.text && (
+                <div className={`p-4 rounded-lg mb-6 ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                    }`}>
+                    {message.text}
+                </div>
+            )}
+
             {books.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                     No books found. Add some books to get started.
@@ -581,18 +1056,342 @@ function ManageBooks() {
             ) : (
                 <div className="space-y-4">
                     {books.map(book => (
-                        <div key={book.id} className="bg-gray-50 rounded-lg p-4 flex justify-between items-center">
-                            <div>
-                                <h3 className="font-semibold text-gray-800">{book.title}</h3>
-                                <p className="text-gray-600 text-sm">by {book.author}</p>
-                                <p className="text-gray-500 text-sm">${book.price} • {book.category}</p>
+                        <div key={book._id} className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+                            {editingBook === book._id ? (
+                                // Edit Form
+                                <div className="space-y-4">
+                                    <h3 className="text-lg font-semibold text-blue-600 mb-4">Editing: {book.title}</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="md:col-span-2">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Title *
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="title"
+                                                value={editFormData.title}
+                                                onChange={handleEditChange}
+                                                required
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            />
+                                        </div>
+
+                                        <div className="md:col-span-2">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Author *
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="author"
+                                                value={editFormData.author}
+                                                onChange={handleEditChange}
+                                                required
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            />
+                                        </div>
+
+                                        <div className="md:col-span-2">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Description *
+                                            </label>
+                                            <textarea
+                                                name="description"
+                                                value={editFormData.description}
+                                                onChange={handleEditChange}
+                                                required
+                                                rows={3}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Category *
+                                            </label>
+                                            <select
+                                                name="category"
+                                                value={editFormData.category}
+                                                onChange={handleEditChange}
+                                                required
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            >
+                                                <option value="">Select category</option>
+                                                {categories.map(category => (
+                                                    <option key={category.id} value={category.id}>
+                                                        {category.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Price ($) *
+                                            </label>
+                                            <input
+                                                type="number"
+                                                name="price"
+                                                value={editFormData.price}
+                                                onChange={handleEditChange}
+                                                required
+                                                min="0"
+                                                step="0.01"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Pages
+                                            </label>
+                                            <input
+                                                type="number"
+                                                name="pages"
+                                                value={editFormData.pages}
+                                                onChange={handleEditChange}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                ISBN
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="isbn"
+                                                value={editFormData.isbn}
+                                                onChange={handleEditChange}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Format
+                                            </label>
+                                            <select
+                                                name="format"
+                                                value={editFormData.format}
+                                                onChange={handleEditChange}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            >
+                                                <option value="Paperback">Paperback</option>
+                                                <option value="Hardcover">Hardcover</option>
+                                                <option value="eBook">E-book</option>
+                                                <option value="Audiobook">Audiobook</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Stock
+                                            </label>
+                                            <input
+                                                type="number"
+                                                name="stock"
+                                                value={editFormData.stock}
+                                                onChange={handleEditChange}
+                                                min="0"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            />
+                                        </div>
+
+                                        <div className="flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                name="featured"
+                                                checked={editFormData.featured}
+                                                onChange={handleEditChange}
+                                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                            />
+                                            <label className="ml-2 block text-sm text-gray-700">
+                                                Featured Book
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-end space-x-3 pt-4">
+                                        <button
+                                            onClick={cancelEditing}
+                                            className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={() => updateBook(book._id)}
+                                            disabled={editLoading}
+                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                        >
+                                            {editLoading ? 'Updating...' : 'Update Book'}
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                // Display Mode
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-4 flex-1">
+                                        {book.coverImage && (
+                                            <img
+                                                src={book.coverImage}
+                                                alt={book.title}
+                                                className="w-16 h-20 object-cover rounded shadow"
+                                            />
+                                        )}
+                                        <div className="flex-1">
+                                            <h3 className="font-semibold text-gray-800">{book.title}</h3>
+                                            <p className="text-gray-600 text-sm">by {book.author}</p>
+                                            <div className="flex flex-wrap gap-2 mt-1">
+                                                <span className="text-gray-500 text-sm">${book.price}</span>
+                                                <span className="text-gray-500 text-sm">•</span>
+                                                <span className="text-gray-500 text-sm capitalize">{book.category}</span>
+                                                <span className="text-gray-500 text-sm">•</span>
+                                                <span className="text-gray-500 text-sm">{book.format}</span>
+                                                {book.featured && (
+                                                    <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">
+                                                        Featured
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-gray-400 text-xs mt-1">
+                                                ISBN: {book.isbn || 'N/A'} | Stock: {book.stock || 1}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex space-x-2">
+                                        <button
+                                            onClick={() => startEditing(book)}
+                                            className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            onClick={() => deleteBook(book._id)}
+                                            className="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </motion.div>
+    );
+}
+
+// Transactions Component
+function Transactions() {
+    const [transactions, setTransactions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState('all'); // all, purchase, borrow
+
+    useEffect(() => {
+        fetchTransactions();
+    }, []);
+
+    const fetchTransactions = async () => {
+        try {
+            const response = await fetch('/api/admin/transactions');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            setTransactions(data.transactions || []);
+        } catch (error) {
+            console.error('Error fetching transactions:', error);
+            // Set empty array if API fails
+            setTransactions([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const filteredTransactions = transactions.filter(transaction => {
+        if (filter === 'all') return true;
+        return transaction.type === filter;
+    });
+
+    if (loading) {
+        return (
+            <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                <p className="mt-2 text-gray-600">Loading transactions...</p>
+            </div>
+        );
+    }
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+        >
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">Transactions</h2>
+                <select
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                    <option value="all">All Transactions</option>
+                    <option value="purchase">Purchases</option>
+                    <option value="borrow">Borrows</option>
+                </select>
+            </div>
+
+            {filteredTransactions.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                    No transactions found. Transactions will appear here when customers make purchases or borrow books.
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    {filteredTransactions.map(transaction => (
+                        <div key={transaction._id} className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
+                            <div className="flex justify-between items-start mb-3">
+                                <div>
+                                    <h3 className="font-semibold text-gray-800">{transaction.bookTitle}</h3>
+                                    <p className="text-gray-600 text-sm">Transaction ID: {transaction.transactionId}</p>
+                                </div>
+                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${transaction.type === 'purchase'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-blue-100 text-blue-800'
+                                    }`}>
+                                    {transaction.type === 'purchase' ? 'Purchase' : 'Borrow'}
+                                </span>
                             </div>
-                            <button
-                                onClick={() => deleteBook(book.id)}
-                                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
-                            >
-                                Delete
-                            </button>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                                <div>
+                                    <strong className="text-gray-700">Customer:</strong>
+                                    <p className="text-gray-600">{transaction.customerName || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <strong className="text-gray-700">Amount:</strong>
+                                    <p className="text-gray-600">${transaction.amount}</p>
+                                </div>
+                                <div>
+                                    <strong className="text-gray-700">Date:</strong>
+                                    <p className="text-gray-600">{new Date(transaction.createdAt).toLocaleDateString()}</p>
+                                </div>
+                                <div>
+                                    <strong className="text-gray-700">Status:</strong>
+                                    <p className={`font-medium ${transaction.status === 'completed'
+                                        ? 'text-green-600'
+                                        : transaction.status === 'pending'
+                                            ? 'text-yellow-600'
+                                            : 'text-red-600'
+                                        }`}>
+                                        {transaction.status}
+                                    </p>
+                                </div>
+                            </div>
+                            {transaction.phoneNumber && (
+                                <div className="mt-2 text-sm">
+                                    <strong className="text-gray-700">Phone:</strong>
+                                    <span className="text-gray-600 ml-2">{transaction.phoneNumber}</span>
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>

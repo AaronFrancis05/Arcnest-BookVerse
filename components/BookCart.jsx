@@ -18,12 +18,20 @@ import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
 
 export default function BookCart() {
-    const { cartItems, removeFromCart, updateQuantity, clearCart, getTotalPrice } = useCart();
+    const { cartItems, removeFromCart, updateQuantity, clearCart } = useCart();
     const [selectedPayment, setSelectedPayment] = useState('');
     const [phoneNumber, setPhoneNumber] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [showLoginPrompt, setShowLoginPrompt] = useState(false);
     const { user, isSignedIn } = useUser();
+
+    // Local getTotalPrice function as fallback
+    const getTotalPrice = () => {
+        return cartItems.reduce((total, item) => {
+            const itemPrice = getItemPrice(item);
+            return total + (itemPrice * item.quantity);
+        }, 0);
+    };
 
     // Track cart view event
     useEffect(() => {
@@ -366,7 +374,7 @@ export default function BookCart() {
     };
 
     const getItemPrice = (item) => {
-        return item.type === 'borrow' ? item.borrowPrice || 5 : item.price;
+        return item.type === 'borrow' ? (item.borrowPrice || 5) : item.price;
     };
 
     if (cartItems.length === 0) {
@@ -490,7 +498,7 @@ export default function BookCart() {
                     <AnimatePresence>
                         {cartItems.map((item) => (
                             <motion.div
-                                key={item.id}
+                                key={`${item.id}-${item.type}`}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, x: -20 }}
@@ -582,7 +590,7 @@ export default function BookCart() {
                         {/* Items List */}
                         <div className="space-y-2 sm:space-y-3 mb-4 max-h-48 overflow-y-auto pr-2">
                             {cartItems.map((item) => (
-                                <div key={item.id} className="flex justify-between text-xs sm:text-sm">
+                                <div key={`${item.id}-${item.type}-summary`} className="flex justify-between text-xs sm:text-sm">
                                     <div className="flex-1 min-w-0 pr-2">
                                         <div className="text-gray-600 truncate font-medium">
                                             {item.title}

@@ -1,21 +1,58 @@
-// app/api/admin/books/route.js
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs/server";
 import connectDB from "@lib/mongodb";
 import Book from "@models/Book";
 
+// GET all books for management
+export async function GET() {
+  try {
+    await connectDB();
+
+    const user = await currentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check if user is admin
+    const userRole = user.publicMetadata?.role;
+    if (userRole !== "admin") {
+      return NextResponse.json(
+        { error: "Admin access required" },
+        { status: 403 }
+      );
+    }
+
+    const books = await Book.find({}).sort({ createdAt: -1 });
+    return NextResponse.json({ books });
+  } catch (error) {
+    console.error("Error fetching books:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch books" },
+      { status: 500 }
+    );
+  }
+}
+
+// POST create new book
 export async function POST(request) {
   try {
     await connectDB();
 
-    const { userId } = auth();
+    const user = await currentUser();
 
-    if (!userId) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // For now, we'll skip the admin check in API routes
-    // You can implement a different admin verification method
+    // Check if user is admin
+    const userRole = user.publicMetadata?.role;
+    if (userRole !== "admin") {
+      return NextResponse.json(
+        { error: "Admin access required" },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
 
     // Validate required fields
@@ -54,12 +91,13 @@ export async function POST(request) {
         ? new Date(body.publishedDate)
         : new Date(),
       coverImage: body.coverImage?.trim() || "",
+      backCoverImage: body.backCoverImage?.trim() || "",
       publisher: body.publisher?.trim() || "BookVerse Publications",
       language: body.language?.trim() || "English",
       format: body.format || "Paperback",
       stock: body.stock ? parseInt(body.stock) : 1,
       featured: body.featured || false,
-      createdBy: userId,
+      createdBy: user.id,
     });
 
     const savedBook = await newBook.save();

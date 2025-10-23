@@ -1,25 +1,50 @@
-// app/api/admin/authors/route.js
 import { NextResponse } from "next/server";
-
-import { clerkClient } from "@clerk/nextjs";
 import { currentUser } from "@clerk/nextjs/server";
 import connectDB from "@lib/mongodb";
 import Author from "@models/Author";
 
-export async function POST(request) {
+// GET all authors for dropdown
+export async function GET() {
   try {
     await connectDB();
 
-    // Instead of currentUser, use:
     const user = await currentUser();
-
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Check if user is admin
     const userRole = user.publicMetadata?.role;
+    if (userRole !== "admin") {
+      return NextResponse.json(
+        { error: "Admin access required" },
+        { status: 403 }
+      );
+    }
 
+    const authors = await Author.find({}).sort({ name: 1 });
+    return NextResponse.json({ authors });
+  } catch (error) {
+    console.error("Error fetching authors:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch authors" },
+      { status: 500 }
+    );
+  }
+}
+
+// POST create new author
+export async function POST(request) {
+  try {
+    await connectDB();
+
+    const user = await currentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check if user is admin
+    const userRole = user.publicMetadata?.role;
     if (userRole !== "admin") {
       return NextResponse.json(
         { error: "Admin access required" },
@@ -46,16 +71,8 @@ export async function POST(request) {
       photo: body.photo?.trim() || undefined,
       nationality: body.nationality?.trim() || undefined,
       birthDate: body.birthDate ? new Date(body.birthDate) : undefined,
-      awards: body.awards
-        ? Array.isArray(body.awards)
-          ? body.awards
-          : [body.awards]
-        : [],
-      genres: body.genres
-        ? Array.isArray(body.genres)
-          ? body.genres
-          : [body.genres]
-        : [],
+      awards: body.awards || [],
+      genres: body.genres || [],
       socialMedia: body.socialMedia || {},
       createdBy: user.id,
     });
@@ -77,6 +94,13 @@ export async function POST(request) {
       return NextResponse.json(
         { error: "Validation error", details: errors },
         { status: 400 }
+      );
+    }
+
+    if (error.code === 11000) {
+      return NextResponse.json(
+        { error: "An author with this name already exists" },
+        { status: 409 }
       );
     }
 

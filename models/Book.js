@@ -1,4 +1,3 @@
-// models/Book.js
 import mongoose from "mongoose";
 
 const BookSchema = new mongoose.Schema({
@@ -55,7 +54,7 @@ const BookSchema = new mongoose.Schema({
   isbn: {
     type: String,
     unique: true,
-    sparse: true, // Allows multiple null values but enforces uniqueness for non-null
+    sparse: true,
     trim: true,
   },
   publishedDate: {
@@ -63,6 +62,10 @@ const BookSchema = new mongoose.Schema({
     default: Date.now,
   },
   coverImage: {
+    type: String,
+    default: "",
+  },
+  backCoverImage: {
     type: String,
     default: "",
   },
@@ -77,7 +80,7 @@ const BookSchema = new mongoose.Schema({
   },
   format: {
     type: String,
-    enum: ["Paperback", "Hardcover", "eBook", "Audiobook"],
+    enum: ["Paperback", "Hardcover", "E-book", "Audiobook"], // Accept "E-book"
     default: "Paperback",
   },
   stock: {
@@ -90,7 +93,7 @@ const BookSchema = new mongoose.Schema({
     default: false,
   },
   createdBy: {
-    type: String, // Clerk user ID
+    type: String,
     required: true,
   },
   createdAt: {

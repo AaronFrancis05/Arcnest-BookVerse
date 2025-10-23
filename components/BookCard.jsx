@@ -8,9 +8,16 @@ export default function BookCard({ book, onAddToCart, onBorrow }) {
     const { addToCart } = useCart();
 
     const handleAddToCart = (type) => {
-        addToCart(book, type);
+        console.log(`Adding ${book.title} to cart as ${type}`);
 
-        // Optional: Keep the existing function calls if needed elsewhere
+        // Only call addToCart once
+        addToCart({
+            ...book,
+            type: type
+        });
+
+        // Optional: Call the parent functions for any additional logic
+        // But remove the duplicate cart adding logic from the parent
         if (type === 'purchase' && onAddToCart) {
             onAddToCart(book);
         } else if (type === 'borrow' && onBorrow) {
@@ -48,10 +55,6 @@ export default function BookCard({ book, onAddToCart, onBorrow }) {
                         {book.category}
                     </span>
                 </div>
-
-                {/* <p className="text-gray-600 text-sm mb-4 line-clamp-3 leading-relaxed">
-                    {book.description}
-                </p> */}
 
                 <div className="flex justify-between items-center mb-6">
                     <div className="text-left">
