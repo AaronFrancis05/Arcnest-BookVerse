@@ -99,7 +99,7 @@ export default function Home() {
 
   return (
     <Layout>
-      <div className="w-full h-[20vh] min-h-[300px] max-h-[500px] mx-auto mb-4">
+      <div className="w-full h-[20vh] min-h-[300px] max-h-[500px] mx-auto mb-4 max-sm:mb-20 ">
         <BookScene />
       </div>
 
@@ -127,7 +127,7 @@ export default function Home() {
 
       <CategoryFilter
         categories={[
-          { id: "all", name: "All Categories" },
+          /* { id: "all", name: "All Categories" }, */
           { id: "fiction", name: "Fiction" },
           { id: "non-fiction", name: "Non-Fiction" },
           { id: "science", name: "Science" },
