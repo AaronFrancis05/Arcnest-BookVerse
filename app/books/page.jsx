@@ -1,16 +1,54 @@
 'use client';
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Layout from "@components/MainLayout";
-import { books, categories } from "@lib/data";
 
 export default function BooksCatalog() {
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [sortBy, setSortBy] = useState("title");
     const [searchQuery, setSearchQuery] = useState("");
+    const [books, setBooks] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    // Fetch books from PUBLIC API
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                const response = await fetch('/api/public/books');
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch books');
+                }
+
+                const booksData = await response.json();
+                setBooks(booksData);
+
+                // Extract unique categories from books
+                const uniqueCategories = [...new Set(booksData.map(book => book.category))]
+                    .map(category => ({
+                        id: category,
+                        name: category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' ')
+                    }));
+
+                setCategories(uniqueCategories);
+            } catch (err) {
+                setError(err.message);
+                console.error('Error fetching data:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
 
     const filteredAndSortedBooks = useMemo(() => {
+        if (!books.length) return [];
+
         let filtered = books.filter(book =>
             selectedCategory === "all" || book.category === selectedCategory
         );
@@ -41,7 +79,42 @@ export default function BooksCatalog() {
                     return 0;
             }
         });
-    }, [selectedCategory, sortBy, searchQuery]);
+    }, [books, selectedCategory, sortBy, searchQuery]);
+
+    if (loading) {
+        return (
+            <Layout>
+                <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 flex items-center justify-center">
+                    <div className="text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+                        <p className="mt-4 text-gray-600">Loading books...</p>
+                    </div>
+                </div>
+            </Layout>
+        );
+    }
+
+    if (error) {
+        return (
+            <Layout>
+                <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8 flex items-center justify-center">
+                    <div className="text-center">
+                        <div className="text-red-500 text-6xl mb-4">❌</div>
+                        <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                            Error loading books
+                        </h3>
+                        <p className="text-gray-500 mb-4">{error}</p>
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                            Try Again
+                        </button>
+                    </div>
+                </div>
+            </Layout>
+        );
+    }
 
     return (
         <Layout>
@@ -142,18 +215,30 @@ export default function BooksCatalog() {
                         <AnimatePresence>
                             {filteredAndSortedBooks.map((book) => (
                                 <motion.div
-                                    key={book.id}
+                                    key={book._id}
                                     layout
                                     initial={{ opacity: 0, scale: 0.9 }}
                                     animate={{ opacity: 1, scale: 1 }}
                                     exit={{ opacity: 0, scale: 0.9 }}
                                     transition={{ duration: 0.3 }}
                                 >
-                                    <Link href={`/books/${book.id}`}>
+                                    <Link href={`/books/${book._id}`}>
                                         <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group cursor-pointer h-full flex flex-col">
                                             {/* Book Cover */}
                                             <div className="relative h-48 bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
-                                                <div className="w-24 h-32 bg-gradient-to-br from-blue-200 to-purple-200 rounded-lg shadow-md group-hover:scale-105 transition-transform duration-300 flex items-center justify-center">
+                                                {book.coverImage ? (
+                                                    <img
+                                                        src={book.coverImage}
+                                                        alt={book.title}
+                                                        className="w-24 h-32 object-cover rounded-lg shadow-md group-hover:scale-105 transition-transform duration-300"
+                                                        onError={(e) => {
+                                                            // Fallback if image fails to load
+                                                            e.target.style.display = 'none';
+                                                            e.target.nextSibling.style.display = 'flex';
+                                                        }}
+                                                    />
+                                                ) : null}
+                                                <div className={`w-24 h-32 bg-gradient-to-br from-blue-200 to-purple-200 rounded-lg shadow-md group-hover:scale-105 transition-transform duration-300 flex items-center justify-center ${book.coverImage ? 'hidden' : 'flex'}`}>
                                                     <span className="text-xs font-semibold text-gray-700 text-center px-2">
                                                         {book.title.split(' ').slice(0, 2).join(' ')}
                                                     </span>
@@ -177,8 +262,8 @@ export default function BooksCatalog() {
                                                     <span className="text-lg font-bold text-green-600">
                                                         ${book.price}
                                                     </span>
-                                                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                                                        {categories.find(cat => cat.id === book.category)?.name}
+                                                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full capitalize">
+                                                        {book.category}
                                                     </span>
                                                 </div>
                                             </div>
