@@ -1,4 +1,4 @@
-// components/Footer.jsx
+// FOOTER SECTION 
 'use client';
 import { motion } from 'framer-motion';
 import Link from 'next/link';

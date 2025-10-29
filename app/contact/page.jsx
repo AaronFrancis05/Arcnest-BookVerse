@@ -1,5 +1,5 @@
 'use client'
-// pages/contact.js
+// CONTACT PAGE
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Layout from '@components/MainLayout';

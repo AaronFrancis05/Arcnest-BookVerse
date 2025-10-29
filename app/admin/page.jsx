@@ -421,7 +421,7 @@ function AddBookForm() {
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Price ($) *
+                            Price (UGX) *
                         </label>
                         <input
                             type="number"
@@ -432,7 +432,7 @@ function AddBookForm() {
                             min="0"
                             step="0.01"
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="29.99"
+                            placeholder="25000"
                         />
                     </div>
 

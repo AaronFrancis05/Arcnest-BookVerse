@@ -1,4 +1,4 @@
-// components/FAQ/FAQSection.jsx
+// FREQUENTLY ASKED QUESTIONS (FAQ) SECTION COMPONENT
 'use client';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';

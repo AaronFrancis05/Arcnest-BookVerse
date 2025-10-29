@@ -340,7 +340,7 @@ export default function BookDetail({ params }) {
                                     disabled={book.stock <= 0}
                                 >
                                     {book.stock > 0
-                                        ? `Add to Cart - $${book.price}`
+                                        ? `Add to Cart - UGX ${book.price}`
                                         : 'Out of Stock'
                                     }
                                 </button>
@@ -355,16 +355,16 @@ export default function BookDetail({ params }) {
                                 <div className="grid grid-cols-3 gap-2 text-sm">
                                     <div className="text-center bg-white rounded p-2 shadow-sm border border-blue-100">
                                         <div className="font-semibold text-blue-600">Paperback</div>
-                                        <div className="text-green-600 font-medium">${book.price}</div>
+                                        <div className="text-green-600 font-medium">UGX {book.price}</div>
                                     </div>
                                     <div className="text-center bg-white rounded p-2 shadow-sm border border-blue-100">
                                         <div className="font-semibold text-blue-600">eBook</div>
-                                        <div className="text-green-600 font-medium">${(book.price * 0.7).toFixed(2)}</div>
+                                        <div className="text-green-600 font-medium">UGX {(book.price * 0.7).toFixed(2)}</div>
                                         <div className="text-xs text-gray-500">Save 30%</div>
                                     </div>
                                     <div className="text-center bg-white rounded p-2 shadow-sm border border-blue-100">
                                         <div className="font-semibold text-blue-600">Audiobook</div>
-                                        <div className="text-green-600 font-medium">${(book.price * 0.8).toFixed(2)}</div>
+                                        <div className="text-green-600 font-medium">UGX {(book.price * 0.8).toFixed(2)}</div>
                                         <div className="text-xs text-gray-500">Save 20%</div>
                                     </div>
                                 </div>

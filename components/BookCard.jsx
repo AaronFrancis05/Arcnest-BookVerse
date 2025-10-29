@@ -59,10 +59,10 @@ export default function BookCard({ book, onAddToCart, onBorrow }) {
                 <div className="flex justify-between items-center mb-6">
                     <div className="text-left">
                         <div className="text-2xl font-bold text-gray-900">
-                            ${book.price}
+                            UGX {book.price}
                         </div>
                         <div className="text-green-600 text-sm font-medium">
-                            Borrow: ${book.borrowPrice || 5}
+                            Borrow: UGX {book.borrowPrice || 5000}
                         </div>
                     </div>
                     <div className="text-right">

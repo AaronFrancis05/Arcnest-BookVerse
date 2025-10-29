@@ -1,3 +1,4 @@
+//GALLERY PAGE FOR BOOKS CATALOG WITH FILTERS, SORTING, AND SEARCH FUNCTIONALITY
 'use client';
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -260,7 +261,7 @@ export default function BooksCatalog() {
 
                                                 <div className="flex justify-between items-center mt-auto">
                                                     <span className="text-lg font-bold text-green-600">
-                                                        ${book.price}
+                                                        UGX {book.price}
                                                     </span>
                                                     <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full capitalize">
                                                         {book.category}

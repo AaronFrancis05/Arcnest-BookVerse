@@ -1,5 +1,5 @@
+// HOME PAGE WITH 3D BOOK DESIGN, CATEGORY FILTER, AND FEATURED BOOKS
 "use client";
-// pages/index.js
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Layout from "@components/MainLayout";
