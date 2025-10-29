@@ -1,13 +1,13 @@
 'use client'
 import { motion } from "framer-motion";
-import Header from "@components/Header";
+import Navigation from "@components/Navigation";
 
 import React from 'react'
 
 const Layout = ({children}) => {
   return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-          <Header />
+          <Navigation />
           <motion.main
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

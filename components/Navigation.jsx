@@ -1,4 +1,4 @@
-// components/Header.js
+// NAVIGATION BAR COMPONENT
 'use client'
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,7 +11,8 @@ import {
     FiX,
     FiLogIn,
     FiHome,
-    FiSettings
+    FiSettings,
+    FiHelpCircle
 } from 'react-icons/fi';
 import { useCart } from '@context/cartContext';
 import { useState, useEffect } from 'react';
@@ -22,7 +23,7 @@ import {
     useUser
 } from '@clerk/nextjs';
 
-export default function Header() {
+export default function Navigation() {
     const { cartItems = [] } = useCart();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
@@ -129,6 +130,13 @@ export default function Header() {
                         >
                             <FiUser className="text-lg group-hover:scale-110 transition-transform" />
                             <span>About</span>
+                        </Link>
+                        <Link
+                            href="/faq"
+                            className="flex items-center space-x-1 hover:text-indigo-600 transition-colors group px-3 py-2 rounded-lg hover:bg-gray-50"
+                        >
+                            <FiHelpCircle className="text-lg group-hover:scale-110 transition-transform" />
+                            <span>FAQ</span>
                         </Link>
 
                         <Link
@@ -258,6 +266,14 @@ export default function Header() {
                                 >
                                     <FiUser className="text-xl text-indigo-600 group-hover:scale-110 transition-transform" />
                                     <span>About</span>
+                                </Link>
+                                <Link
+                                    href="/faq"
+                                    className="flex items-center space-x-3 p-3 hover:bg-indigo-50 rounded-lg transition-colors text-lg font-medium group"
+                                    onClick={closeMobileMenu}
+                                >
+                                    <FiHelpCircle className="text-xl text-indigo-600 group-hover:scale-110 transition-transform" />
+                                    <span>FAQ</span>
                                 </Link>
 
                                 <Link
