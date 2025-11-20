@@ -1,5 +1,6 @@
+// ABOUT PAGE
 'use client'
-// pages/about.js
+
 import { motion } from 'framer-motion';
 import Layout from '@components/MainLayout';
 import { FiUsers, FiAward, FiBook } from 'react-icons/fi';
