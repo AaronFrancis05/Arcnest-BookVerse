@@ -321,7 +321,7 @@ function CustomUserButton({ isAdmin }) {
             <UserButton.MenuItems>
                
                 {/* Conditional admin link */}
-                {isAdmin && (
+                {isAdmin || (
                     <UserButton.Link
                         label="Admin Dashboard"
                         href="/admin"
