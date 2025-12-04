@@ -12,7 +12,10 @@ import {
     FiLogIn,
     FiHome,
     FiSettings,
-    FiHelpCircle
+    FiHelpCircle,
+    // --- NEW IMPORTS FOR DROPDOWN ---
+    FiChevronDown,
+    FiChevronUp,
 } from 'react-icons/fi';
 import { useCart } from '@context/cartContext';
 import { useState, useEffect } from 'react';
@@ -30,6 +33,9 @@ export default function Navigation() {
     const { user, isLoaded } = useUser();
     const [isAdmin, setIsAdmin] = useState(false);
     const [isCheckingAdmin, setIsCheckingAdmin] = useState(false);
+    
+    // --- NEW STATE FOR BOOK DROPDOWN ---
+    const [isBookDropdownOpen, setIsBookDropdownOpen] = useState(false);
 
     // Check admin status when user loads
     useEffect(() => {
@@ -73,12 +79,19 @@ export default function Navigation() {
 
     const toggleMobileMenu = () => {
         setIsMobileMenuOpen(!isMobileMenuOpen);
+        // Ensure book dropdown is closed when opening/closing main mobile menu
+        setIsBookDropdownOpen(false); 
     };
 
     const closeMobileMenu = () => {
         setIsMobileMenuOpen(false);
+        setIsBookDropdownOpen(false); // Close dropdown when main mobile menu closes
     };
 
+    const toggleBookDropdown = () => {
+        setIsBookDropdownOpen(!isBookDropdownOpen);
+    };
+    
     // Safe calculation with array check
     const totalCartItems = Array.isArray(cartItems)
         ? cartItems.reduce((total, item) => total + (item.quantity || 1), 0)
@@ -115,14 +128,61 @@ export default function Navigation() {
                             <FiHome className="text-lg group-hover:scale-110 transition-transform" />
                             <span>Home</span>
                         </Link>
-
-                        <Link
-                            href="/books"
-                            className="flex items-center space-x-1 hover:text-indigo-600 transition-colors group px-3 py-2 rounded-lg hover:bg-gray-50"
+                        
+                        {/* --- BOOK DROPDOWN FOR DESKTOP --- */}
+                        <div 
+                            className="relative"
+                            onMouseEnter={() => setIsBookDropdownOpen(true)}
+                            onMouseLeave={() => setIsBookDropdownOpen(false)}
                         >
-                            <FiBook className="text-lg group-hover:scale-110 transition-transform" />
-                            <span>Books</span>
-                        </Link>
+                            <button
+                                onClick={toggleBookDropdown}
+                                className="flex items-center space-x-1 hover:text-indigo-600 transition-colors group px-3 py-2 rounded-lg hover:bg-gray-50 focus:outline-none"
+                            >
+                                <FiBook className="text-lg group-hover:scale-110 transition-transform" />
+                                <span>Book</span>
+                                {isBookDropdownOpen ? (
+                                    <FiChevronUp className="text-gray-500 w-4 h-4" />
+                                ) : (
+                                    <FiChevronDown className="text-gray-500 w-4 h-4" />
+                                )}
+                            </button>
+
+                            {/* Dropdown Content */}
+                            <AnimatePresence>
+                                {isBookDropdownOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="absolute top-full left-0 mt-2 w-48 bg-white border border-gray-100 rounded-lg shadow-xl z-20 p-1 origin-top-left"
+                                        onClick={() => setIsBookDropdownOpen(false)} // Close on click inside
+                                    >
+                                        <Link
+                                            href="/books"
+                                            className="flex items-center w-full p-2 text-gray-700 hover:bg-indigo-50 rounded-md transition-colors text-base font-normal"
+                                        >
+                                            All Books
+                                        </Link>
+                                        <Link
+                                            href="/books"
+                                            className="flex items-center w-full p-2 text-gray-700 hover:bg-indigo-50 rounded-md transition-colors text-base font-normal"
+                                        >
+                                            Browse Genres
+                                        </Link>
+                                        <Link
+                                            href="/books"
+                                            className="flex items-center w-full p-2 text-gray-700 hover:bg-indigo-50 rounded-md transition-colors text-base font-normal"
+                                        >
+                                            New Releases
+                                        </Link>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                        {/* --- END BOOK DROPDOWN FOR DESKTOP --- */}
+
 
                         <Link
                             href="/about"
@@ -199,6 +259,7 @@ export default function Navigation() {
                         <Link
                             href="/cart"
                             className="flex items-center hover:text-indigo-600 transition-colors relative p-2 rounded-lg hover:bg-gray-50"
+                            onClick={closeMobileMenu} // Add this to close menu if cart is clicked
                         >
                             <FiShoppingCart className="text-xl" />
                             {totalCartItems > 0 && (
@@ -250,14 +311,58 @@ export default function Navigation() {
                                     <span>Home</span>
                                 </Link>
 
-                                <Link
-                                    href="/books"
-                                    className="flex items-center space-x-3 p-3 hover:bg-indigo-50 rounded-lg transition-colors text-lg font-medium group"
-                                    onClick={closeMobileMenu}
-                                >
-                                    <FiBook className="text-xl text-indigo-600 group-hover:scale-110 transition-transform" />
-                                    <span>Books</span>
-                                </Link>
+                                {/* --- BOOK DROPDOWN FOR MOBILE MENU --- */}
+                                <div className="relative">
+                                    <button
+                                        onClick={toggleBookDropdown}
+                                        className="flex items-center space-x-3 p-3 hover:bg-indigo-50 rounded-lg transition-colors text-lg font-medium group w-full text-left"
+                                    >
+                                        <FiBook className="text-xl text-indigo-600 group-hover:scale-110 transition-transform" />
+                                        <span>Book</span>
+                                        {isBookDropdownOpen ? (
+                                            <FiChevronUp className="text-gray-500 w-5 h-5 ml-auto" />
+                                        ) : (
+                                            <FiChevronDown className="text-gray-500 w-5 h-5 ml-auto" />
+                                        )}
+                                    </button>
+                                    
+                                    {/* Mobile Dropdown Content */}
+                                    <AnimatePresence>
+                                        {isBookDropdownOpen && (
+                                            <motion.div
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: 'auto' }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                transition={{ duration: 0.2 }}
+                                                className="pl-12 pr-4 py-1 bg-gray-50 rounded-b-lg overflow-hidden"
+                                            >
+                                                <Link
+                                                    href="/books"
+                                                    className="block p-2 text-gray-700 hover:bg-indigo-100 rounded-md transition-colors text-base"
+                                                    onClick={closeMobileMenu}
+                                                >
+                                                    All Books
+                                                </Link>
+                                                <Link
+                                                    href="/books"
+                                                    className="block p-2 text-gray-700 hover:bg-indigo-100 rounded-md transition-colors text-base"
+                                                    onClick={closeMobileMenu}
+                                                >
+                                                    Browse Genres
+                                                </Link>
+                                                <Link
+                                                    href="/books"
+                                                    className="block p-2 text-gray-700 hover:bg-indigo-100 rounded-md transition-colors text-base"
+                                                    onClick={closeMobileMenu}
+                                                >
+                                                    New Releases
+                                                </Link>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                                {/* --- END BOOK DROPDOWN FOR MOBILE MENU --- */}
+
 
                                 <Link
                                     href="/about"
@@ -317,9 +422,8 @@ function CustomUserButton({ isAdmin }) {
                 }
             }}
         >
-            {/* Always render MenuItems with at least one item */}
             <UserButton.MenuItems>
-               
+                
                 {/* Conditional admin link */}
                 {isAdmin && (
                     <UserButton.Link
