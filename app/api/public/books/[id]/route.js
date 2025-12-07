@@ -5,7 +5,7 @@ import Book from "@models/Book";
 export async function GET(request, { params }) {
   try {
     await connectDB();
-    const { id } = params;
+    const { id } = await params;
 
     const book = await Book.findById(id).select("-createdBy -updatedAt").lean();
 
